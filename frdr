@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+CONFIG_DIR=~/.config/frdr
+CONFIG_FILE=~/.config/frdr/config.env
+
+CACHE_DIR=~/.cache/frdr
+
+download_feeds() {
+	mkdir -p $CACHE_DIR
+	for feed in "${FEEDS[@]}"; do
+		read -r alias url <<<"$feed"
+		feed_dir="$CACHE_DIR/${alias// /_}"
+		[[ ! -d $feed_dir ]] && mkdir "$feed_dir"
+		wget -q -O- "$url" |
+			rss2json |
+			jq -c ". as \$c | \$c.items[] | 
+	   {
+       title: .title,
+       timestamp: (.pub_date | strptime(\"%a, %d %b %Y %T %z\") | mktime | tostring),
+       pub_date: (.pub_date | strptime(\"%a, %d %b %Y %T %z\") | strftime(\"%d %b %y %k:%M\")),
+       link: .link,
+       guid: .guid,
+       description: .description,
+       content: .content,
+	     channel_alias: \"$alias\",
+	     channel: \$c.title,
+	     channel_link: \$c.link,
+	     channel_desc: \$c.description,
+	     read: 0
+	   }" |
+			while read -r obj; do
+				hash=$(jq '.guid' <<<"$obj" | cksum)
+				jq <<<"$obj" >"$feed_dir/${hash%% *}.json"
+			done
+	done
+}
+
+[[ ! -f $CONFIG_FILE ]] &&
+	(
+		echo "creating config file $CONFIG_FILE"
+		mkdir -p $CONFIG_DIR
+		printf "FEEDS=(\n# \"ALIAS=<FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$CONFIG_FILE
+	)
+
+# shellcheck disable=SC1090
+source $CONFIG_FILE
+
+# TODO: don't run right away?
+# download_feeds
+
+for json in "$CACHE_DIR"/*/*.json; do
+	jq -r '(.timestamp) + ":" + (.pub_date) + " [" + (.channel_alias) + "] " + (.title)' "$json"
+done |
+	sort -r |
+	fzf --layout=reverse --delimiter=":" --with-nth=2..
