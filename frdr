@@ -8,29 +8,34 @@ CACHE_DIR=~/.cache/frdr
 download_feeds() {
 	mkdir -p $CACHE_DIR
 	for feed in "${FEEDS[@]}"; do
-		read -r alias url <<<"$feed"
+		read -r alias url local <<<"$feed"
 		feed_dir="$CACHE_DIR/${alias// /_}"
 		[[ ! -d $feed_dir ]] && mkdir "$feed_dir"
-		wget -q -O- "$url" |
+		if [[ -n $local ]]; then
+			cat "$url"
+		else
+			wget -q -O- "$url"
+		fi |
 			rss2json |
-			jq -c ". as \$c | \$c.items[] | 
+			jq -c --arg alias "$alias" '. as $c | $c.items[] | 
 	   {
        title: .title,
-       timestamp: (.pub_date | strptime(\"%a, %d %b %Y %T %z\") | mktime | tostring),
-       pub_date: (.pub_date | strptime(\"%a, %d %b %Y %T %z\") | strftime(\"%d %b %y %k:%M\")),
+       timestamp: (.pub_date | strptime("%a, %d %b %Y %T %z") | mktime | tostring),
+       pub_date: (.pub_date | strptime("%a, %d %b %Y %T %z") | strftime("%d %b %y %k:%M")),
        link: .link,
        guid: .guid,
        description: .description,
        content: .content,
-	     channel_alias: \"$alias\",
-	     channel: \$c.title,
-	     channel_link: \$c.link,
-	     channel_desc: \$c.description,
+	     channel_alias: $alias,
+	     channel: $c.title,
+	     channel_link: $c.link,
+	     channel_desc: $c.description,
 	     read: 0
-	   }" |
+	   }' |
 			while read -r obj; do
 				hash=$(jq '.guid' <<<"$obj" | cksum)
-				jq <<<"$obj" >"$feed_dir/${hash%% *}.json"
+				file="$feed_dir/${hash%% *}.json"
+				[[ ! -f $file ]] && jq <<<"$obj" >"$file"
 			done
 	done
 }
@@ -45,11 +50,24 @@ download_feeds() {
 # shellcheck disable=SC1090
 source $CONFIG_FILE
 
-# TODO: don't run right away?
-# download_feeds
+download_feeds
 
 for json in "$CACHE_DIR"/*/*.json; do
-	jq -r '(.timestamp) + ":" + (.pub_date) + " [" + (.channel_alias) + "] " + (.title)' "$json"
+	jq -r --arg json "$json" \
+		'select(.read == 0) |
+     (.timestamp) + " " + 
+     ($json) + " " + 
+     (.link) + " " + 
+     (.pub_date) + 
+     " [" + (.channel_alias) + "] " + 
+     (.title)' \
+		"$json"
 done |
 	sort -r |
-	fzf --layout=reverse --delimiter=":" --with-nth=2..
+	fzf --layout=reverse \
+		--delimiter=" " \
+		--with-nth=4.. \
+		--preview="jq -r '.description' {2} | \$PAGER" \
+		--bind="r:execute-silent(tmp=\"\$(mktemp)\" && jq '.read = 1' {2} >\$tmp && mv \"\$tmp\" {2} &)" \
+		--bind="enter:execute(jq -r '.description' {2} | \$PAGER)" \
+		--bind="o:execute(xdg-open {3})"
