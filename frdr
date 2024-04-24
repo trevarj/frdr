@@ -3,6 +3,7 @@
 CONFIG_DIR=~/.config/frdr
 export FRDR_CONFIG_FILE=~/.config/frdr/config.env
 export FRDR_CACHE_DIR=~/.cache/frdr
+export FRDR_READ=0
 
 download_feeds() {
 	mkdir -p $FRDR_CACHE_DIR
@@ -46,9 +47,10 @@ aggregate_items() {
 	for feed in "${FEEDS[@]}"; do
 		read -r alias url <<<"$feed"
 		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
+		read=${1:-0}
 		for json in "$feed_dir"/*.json; do
-			jq -r --arg json "$json" \
-				'select(.read == 0) |
+			jq -r --arg read "$read" --arg json "$json" \
+				'select((.read | tostring) == $read) |
           (.timestamp) + " " + 
           ($json) + " " + 
           (.link) + " " + 
@@ -62,12 +64,17 @@ aggregate_items() {
 }
 export -f aggregate_items
 
-mark_read() {
+aggregate_items_read() {
+	aggregate_items 1
+}
+export -f aggregate_items_read
+
+mark() {
 	tmp="$(mktemp)"
-	jq '.read = 1' "$1" >"$tmp"
+	jq ".read = $2" "$1" >"$tmp"
 	mv "$tmp" "$1"
 }
-export -f mark_read
+export -f mark
 
 load_config() {
 	# shellcheck disable=SC1090
@@ -83,7 +90,7 @@ export -f load_config
 	)
 
 load_config
-download_feeds &
+download_feeds
 aggregate_items |
 	fzf --layout=reverse \
 		--header="Feed Reader" \
@@ -93,9 +100,11 @@ aggregate_items |
 		--delimiter=" " \
 		--with-nth=4.. \
 		--preview="jq -r '.description' {2} | \$PAGER" \
-		--bind="r:reload(bash -c 'mark_read {2}; aggregate_items')" \
+		--bind="r:reload(bash -c 'mark {2} 1; aggregate_items')" \
+		--bind="u:reload(bash -c 'mark {2} 0; aggregate_items_read')" \
 		--bind="ctrl-r:reload(bash -c 'aggregate_items')" \
-		--bind="enter:execute(bash -c 'jq -r '.description' {2} | \$PAGER')+reload(bash -c 'mark_read {2}; aggregate_items')" \
-		--bind="o:execute(xdg-open {3})+reload(bash -c 'mark_read {2}; aggregate_items')"
+		--bind="ctrl-h:reload(bash -c 'aggregate_items_read')" \
+		--bind="enter:execute(bash -c 'jq -r '.description' {2} | \$PAGER')+reload(bash -c 'mark {2} 1; aggregate_items')" \
+		--bind="o:execute(xdg-open {3})+reload(bash -c 'mark_read {2} 1; aggregate_items')"
 
 # TODO: add some cache clearing mechanism

@@ -32,6 +32,8 @@ frdr
 | ---    | ---
 | enter  | Open post in `$PAGER`
 | r      | Mark post as read
-| ctrl-r | Reload posts
+| u      | Mark post as unread
+| ctrl-r | Reload/Sho posts
+| ctrl-h | Show read (hidden) posts
 | o      | xdg-open URL to post
 
