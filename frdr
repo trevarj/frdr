@@ -69,6 +69,7 @@ aggregate_items_read() {
 }
 export -f aggregate_items_read
 
+# 1 for read, 0 for unread
 mark() {
 	tmp="$(mktemp)"
 	jq ".read = $2" "$1" >"$tmp"
@@ -107,4 +108,5 @@ aggregate_items |
 		--bind="enter:execute(bash -c 'jq -r '.description' {2} | \$PAGER')+reload(bash -c 'mark {2} 1; aggregate_items')" \
 		--bind="o:execute(xdg-open {3})+reload(bash -c 'mark_read {2} 1; aggregate_items')"
 
-# TODO: add some cache clearing mechanism
+# TODO: somehow asynchronously download and load
+#       or do a timed update
