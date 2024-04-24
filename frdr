@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+##
+## ███████ ██████  ██████  ██████
+## ██      ██   ██ ██   ██ ██   ██
+## █████   ██████  ██   ██ ██████
+## ██      ██   ██ ██   ██ ██   ██
+## ██      ██   ██ ██████  ██   ██
+##
+## RSS Feed Reader feat. fzf & jq
 
 CONFIG_DIR=~/.config/frdr
 export FRDR_CONFIG_FILE=~/.config/frdr/config.env
@@ -83,6 +91,8 @@ load_config() {
 }
 export -f load_config
 
+#########################
+
 [[ ! -f $FRDR_CONFIG_FILE ]] &&
 	(
 		echo "creating config file $FRDR_CONFIG_FILE"
@@ -110,3 +120,11 @@ aggregate_items |
 
 # TODO: somehow asynchronously download and load
 #       or do a timed update
+# TODO: Color formatting for posts.
+#       Grey if not from this week? White otherwise
+# TODO:  Be able to support RSS 1.0 feeds? cow's
+# TODO: HTML content PAGER - lynx / links?
+# TODO: Multi-select for mass marking as read
+# TODO: More robust config, ex. allow spaces in alias
+# FIXME: show read posts, hit ctrl-r on one => sends you back to unread posts
+#        with wrong header
