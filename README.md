@@ -13,7 +13,7 @@ array of RSS feeds.
 
 ```sh
 FEEDS=(
-	# Alias="FEED URL"
+	# "Alias URL"
 	"trev https://trevarj.github.io/rss.xml"
 	# "trev_local /tmp/rss.xml"
 )
