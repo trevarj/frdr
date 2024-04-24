@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 
 CONFIG_DIR=~/.config/frdr
-CONFIG_FILE=~/.config/frdr/config.env
-
-export CACHE_DIR=~/.cache/frdr
+export FRDR_CONFIG_FILE=~/.config/frdr/config.env
+export FRDR_CACHE_DIR=~/.cache/frdr
 
 download_feeds() {
-	mkdir -p $CACHE_DIR
+	mkdir -p $FRDR_CACHE_DIR
 	for feed in "${FEEDS[@]}"; do
 		read -r alias url <<<"$feed"
-		feed_dir="$CACHE_DIR/${alias// /_}"
+		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
 		[[ ! -d $feed_dir ]] && mkdir "$feed_dir"
 
 		# check if it's a local file
@@ -43,18 +42,23 @@ download_feeds() {
 }
 
 aggregate_items() {
-	for json in "$CACHE_DIR"/*/*.json; do
-		jq -r --arg json "$json" \
-			'select(.read == 0) |
-     (.timestamp) + " " + 
-     ($json) + " " + 
-     (.link) + " " + 
-     "[" + (.pub_date) + "]" +
-     "[" + (.channel_alias) + "] " +
-     (.title)' \
-			"$json"
+	load_config
+	for feed in "${FEEDS[@]}"; do
+		read -r alias url <<<"$feed"
+		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
+		for json in "$feed_dir"/*.json; do
+			jq -r --arg json "$json" \
+				'select(.read == 0) |
+          (.timestamp) + " " + 
+          ($json) + " " + 
+          (.link) + " " + 
+          "[" + (.pub_date) + "]" +
+          "[" + (.channel_alias) + "] " +
+          (.title)' \
+				"$json"
+		done
 	done |
-		sort -r
+		sort -r -k1
 }
 export -f aggregate_items
 
@@ -65,25 +69,33 @@ mark_read() {
 }
 export -f mark_read
 
-[[ ! -f $CONFIG_FILE ]] &&
+load_config() {
+	# shellcheck disable=SC1090
+	source $FRDR_CONFIG_FILE
+}
+export -f load_config
+
+[[ ! -f $FRDR_CONFIG_FILE ]] &&
 	(
-		echo "creating config file $CONFIG_FILE"
+		echo "creating config file $FRDR_CONFIG_FILE"
 		mkdir -p $CONFIG_DIR
-		printf "FEEDS=(\n# \"ALIAS <FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$CONFIG_FILE
+		printf "FEEDS=(\n# \"ALIAS <FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$FRDR_CONFIG_FILE
 	)
 
-# shellcheck disable=SC1090
-source $CONFIG_FILE
-
-download_feeds
-
+load_config
+download_feeds &
 aggregate_items |
 	fzf --layout=reverse \
+		--header="Feed Reader" \
+		--header-first \
+		--prompt="Search: " \
+		--info=inline-right \
 		--delimiter=" " \
 		--with-nth=4.. \
 		--preview="jq -r '.description' {2} | \$PAGER" \
 		--bind="r:reload(bash -c 'mark_read {2}; aggregate_items')" \
-		--bind="enter:execute(jq -r '.description' {2} | \$PAGER)" \
-		--bind="o:execute(xdg-open {3})"
+		--bind="ctrl-r:reload(bash -c 'aggregate_items')" \
+		--bind="enter:execute(bash -c 'jq -r '.description' {2} | \$PAGER')+reload(bash -c 'mark_read {2}; aggregate_items')" \
+		--bind="o:execute(xdg-open {3})+reload(bash -c 'mark_read {2}; aggregate_items')"
 
 # TODO: add some cache clearing mechanism
