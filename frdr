@@ -27,18 +27,17 @@ download_feeds() {
 			wget -q -O- "$url"
 		fi |
 			rss2json |
-			jq -c --arg alias "$alias" '. as $c | $c.items[] | 
+			jq -c --arg alias "$alias" '. as $c | $c.items // $c.entries | .[] | 
 	   {
-       title: .title,
-       timestamp: (.pub_date | strptime("%a, %d %b %Y %T %z") | mktime | tostring),
-       pub_date: (.pub_date | strptime("%a, %d %b %Y %T %z") | strftime("%d %b %y %k:%M")),
-       link: .link,
-       guid: .guid,
-       description: .description,
-       content: .content,
+       title: (.title.value? // .title),
+       timestamp: ((try(.pub_date | strptime("%a, %d %b %Y %T %z") | mktime) // (.updated | fromdate)) | tostring),
+       pub_date: ((try(.pub_date | strptime("%a, %d %b %Y %T %z")) // (.updated | fromdate)) | strftime("%d %b %y %k:%M")),
+       link: (.link // .id),
+       guid: (.guid // .id),
+       content: ((.description // .content.value?) // .content),
 	     channel_alias: $alias,
-	     channel: $c.title,
-	     channel_link: $c.link,
+       channel: ($c.title.value? // $c.title),
+       channel_link: ($c.link // $c.id),
 	     channel_desc: $c.description,
 	     read: 0
 	   }' |
@@ -110,7 +109,7 @@ aggregate_items |
 		--info=inline-right \
 		--delimiter=" " \
 		--with-nth=4.. \
-		--preview="jq -r '.description' {2} | \$PAGER" \
+		--preview="jq -r '.content' {2} | \$PAGER" \
 		--bind="ctrl-r:reload(bash -c 'mark {2} 1; aggregate_items')" \
 		--bind="ctrl-u:reload(bash -c 'mark {2} 0; aggregate_items_read')" \
 		--bind="esc:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
@@ -122,7 +121,6 @@ aggregate_items |
 #       or do a timed update
 # TODO: Color formatting for posts.
 #       Grey if not from this week? White otherwise
-# TODO:  Be able to support RSS 1.0 feeds? cow's
 # TODO: HTML content PAGER - lynx / links?
 # TODO: Multi-select for mass marking as read
 # TODO: More robust config, ex. allow spaces in alias
