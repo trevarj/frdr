@@ -94,19 +94,19 @@ load_config
 download_feeds
 aggregate_items |
 	fzf --layout=reverse \
-		--header="Feed Reader" \
+		--header="Feed Reader - Welcome!" \
 		--header-first \
 		--prompt="Search: " \
 		--info=inline-right \
 		--delimiter=" " \
 		--with-nth=4.. \
 		--preview="jq -r '.description' {2} | \$PAGER" \
-		--bind="r:reload(bash -c 'mark {2} 1; aggregate_items')" \
-		--bind="u:reload(bash -c 'mark {2} 0; aggregate_items_read')" \
-		--bind="ctrl-r:reload(bash -c 'aggregate_items')" \
-		--bind="ctrl-h:reload(bash -c 'aggregate_items_read')" \
+		--bind="ctrl-r:reload(bash -c 'mark {2} 1; aggregate_items')" \
+		--bind="ctrl-u:reload(bash -c 'mark {2} 0; aggregate_items_read')" \
+		--bind="esc:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
+		--bind="ctrl-h:reload(bash -c 'aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
 		--bind="enter:execute(bash -c 'jq -r '.description' {2} | \$PAGER')+reload(bash -c 'mark {2} 1; aggregate_items')" \
-		--bind="o:execute(xdg-open {3})+reload(bash -c 'mark_read {2} 1; aggregate_items')"
+		--bind="ctrl-o:execute(xdg-open {3})+reload(bash -c 'mark {2} 1; aggregate_items')"
 
 # TODO: somehow asynchronously download and load
 #       or do a timed update
