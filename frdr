@@ -11,9 +11,11 @@ download_feeds() {
 		read -r alias url <<<"$feed"
 		feed_dir="$CACHE_DIR/${alias// /_}"
 		[[ ! -d $feed_dir ]] && mkdir "$feed_dir"
+
+		# check if it's a local file
 		if [[ -f $url ]]; then
 			cat "$url"
-		else
+		else # fetch feed
 			wget -q -O- "$url"
 		fi |
 			rss2json |
@@ -67,7 +69,7 @@ export -f mark_read
 	(
 		echo "creating config file $CONFIG_FILE"
 		mkdir -p $CONFIG_DIR
-		printf "FEEDS=(\n# \"ALIAS=<FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$CONFIG_FILE
+		printf "FEEDS=(\n# \"ALIAS <FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$CONFIG_FILE
 	)
 
 # shellcheck disable=SC1090
