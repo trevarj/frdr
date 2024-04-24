@@ -3,15 +3,15 @@
 CONFIG_DIR=~/.config/frdr
 CONFIG_FILE=~/.config/frdr/config.env
 
-CACHE_DIR=~/.cache/frdr
+export CACHE_DIR=~/.cache/frdr
 
 download_feeds() {
 	mkdir -p $CACHE_DIR
 	for feed in "${FEEDS[@]}"; do
-		read -r alias url local <<<"$feed"
+		read -r alias url <<<"$feed"
 		feed_dir="$CACHE_DIR/${alias// /_}"
 		[[ ! -d $feed_dir ]] && mkdir "$feed_dir"
-		if [[ -n $local ]]; then
+		if [[ -f $url ]]; then
 			cat "$url"
 		else
 			wget -q -O- "$url"
@@ -40,6 +40,29 @@ download_feeds() {
 	done
 }
 
+aggregate_items() {
+	for json in "$CACHE_DIR"/*/*.json; do
+		jq -r --arg json "$json" \
+			'select(.read == 0) |
+     (.timestamp) + " " + 
+     ($json) + " " + 
+     (.link) + " " + 
+     "[" + (.pub_date) + "]" +
+     "[" + (.channel_alias) + "] " +
+     (.title)' \
+			"$json"
+	done |
+		sort -r
+}
+export -f aggregate_items
+
+mark_read() {
+	tmp="$(mktemp)"
+	jq '.read = 1' "$1" >"$tmp"
+	mv "$tmp" "$1"
+}
+export -f mark_read
+
 [[ ! -f $CONFIG_FILE ]] &&
 	(
 		echo "creating config file $CONFIG_FILE"
@@ -52,22 +75,13 @@ source $CONFIG_FILE
 
 download_feeds
 
-for json in "$CACHE_DIR"/*/*.json; do
-	jq -r --arg json "$json" \
-		'select(.read == 0) |
-     (.timestamp) + " " + 
-     ($json) + " " + 
-     (.link) + " " + 
-     (.pub_date) + 
-     " [" + (.channel_alias) + "] " + 
-     (.title)' \
-		"$json"
-done |
-	sort -r |
+aggregate_items |
 	fzf --layout=reverse \
 		--delimiter=" " \
 		--with-nth=4.. \
 		--preview="jq -r '.description' {2} | \$PAGER" \
-		--bind="r:execute-silent(tmp=\"\$(mktemp)\" && jq '.read = 1' {2} >\$tmp && mv \"\$tmp\" {2} &)" \
+		--bind="r:reload(bash -c 'mark_read {2}; aggregate_items')" \
 		--bind="enter:execute(jq -r '.description' {2} | \$PAGER)" \
 		--bind="o:execute(xdg-open {3})"
+
+# TODO: add some cache clearing mechanism
