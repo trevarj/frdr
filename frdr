@@ -123,12 +123,8 @@ aggregate_items |
 		--bind="${FRDR_READ:-enter}:execute(bash -c 'jq -r '.content' {2} | \$PAGER')+reload(bash -c 'mark 1 {2}; aggregate_items')" \
 		--bind="${FRDR_OPEN:-ctrl-o}:execute(xdg-open {3})+reload(bash -c 'mark 1 {2}; aggregate_items')"
 
-# TODO: somehow asynchronously download and load
-#       or do a timed update
-# TODO: Color formatting for posts.
-#       Grey if not from this week? White otherwise
+# TODO: Color formatting / Customizable post formatting
 # TODO: HTML content PAGER - lynx / links?
-# TODO: Multi-select for mass marking as read
 # TODO: More robust config, ex. allow spaces in alias
 # FIXME: show read posts, hit ctrl-r on one => sends you back to unread posts
 #        with wrong header
