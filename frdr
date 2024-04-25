@@ -14,6 +14,7 @@ export FRDR_CACHE_DIR=~/.cache/frdr
 export FRDR_READ=0
 
 download_feeds() {
+	load_config
 	mkdir -p $FRDR_CACHE_DIR
 	for feed in "${FEEDS[@]}"; do
 		read -r alias url <<<"$feed"
@@ -48,6 +49,7 @@ download_feeds() {
 			done
 	done
 }
+export -f download_feeds
 
 aggregate_items() {
 	load_config
@@ -56,15 +58,16 @@ aggregate_items() {
 		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
 		read=${1:-0}
 		for json in "$feed_dir"/*.json; do
-			jq -r --arg read "$read" --arg json "$json" \
-				'select((.read | tostring) == $read) |
-          (.timestamp) + " " + 
-          ($json) + " " + 
-          (.link) + " " + 
+			[[ -f $json ]] &&
+				jq -r --arg read "$read" --arg json "$json" \
+					'select((.read | tostring) == $read) |
+          (.timestamp) + "," + 
+          ($json) + "," + 
+          (.link) + "," + 
           "[" + (.pub_date) + "]" +
           "[" + (.channel_alias) + "] " +
           (.title)' \
-				"$json"
+					"$json"
 		done
 	done |
 		sort -r -k1
@@ -76,11 +79,11 @@ aggregate_items_read() {
 }
 export -f aggregate_items_read
 
-# 1 for read, 0 for unread
+# $1: 1 for read, 0 for unread
+# $@: files
 mark() {
-	tmp="$(mktemp)"
-	jq ".read = $2" "$1" >"$tmp"
-	mv "$tmp" "$1"
+	flip=$(($1 ^ 1))
+	sed -ie "s/\"read\": $flip/\"read\": $1/" "$@"
 }
 export -f mark
 
@@ -100,22 +103,25 @@ export -f load_config
 	)
 
 load_config
-download_feeds
+download_feeds &
 aggregate_items |
 	fzf --layout=reverse \
+		--multi \
 		--header="Feed Reader - Welcome!" \
 		--header-first \
 		--prompt="Search: " \
 		--info=inline-right \
-		--delimiter=" " \
+		--delimiter="," \
 		--with-nth=4.. \
 		--preview="jq -r '.content' {2} | \$PAGER" \
-		--bind="ctrl-r:reload(bash -c 'mark {2} 1; aggregate_items')" \
-		--bind="ctrl-u:reload(bash -c 'mark {2} 0; aggregate_items_read')" \
-		--bind="esc:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
-		--bind="ctrl-h:reload(bash -c 'aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
-		--bind="enter:execute(bash -c 'jq -r '.content' {2} | \$PAGER')+reload(bash -c 'mark {2} 1; aggregate_items')" \
-		--bind="ctrl-o:execute(xdg-open {3})+reload(bash -c 'mark {2} 1; aggregate_items')"
+		--bind="${FRDR_REFRESH:-ctrl-r}:reload-sync(bash -c 'download_feeds; aggregate_items')" \
+		--bind="${FRDR_SELECT_ALL:-ctrl-space}:toggle-all" \
+		--bind="${FRDR_MARK:-ctrl-y}:reload(bash -c 'mark 1 {+2}; aggregate_items')" \
+		--bind="${FRDR_UNMARK:-ctrl-u}:reload(bash -c 'mark 0 {+2}; aggregate_items_read')" \
+		--bind="${FRDR_VIEW_UNREAD:-esc}:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
+		--bind="${FRDR_VIEW_READ:-alt-h}:reload(bash -c 'aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
+		--bind="${FRDR_READ:-enter}:execute(bash -c 'jq -r '.content' {2} | \$PAGER')+reload(bash -c 'mark 1 {2}; aggregate_items')" \
+		--bind="${FRDR_OPEN:-ctrl-o}:execute(xdg-open {3})+reload(bash -c 'mark 1 {2}; aggregate_items')"
 
 # TODO: somehow asynchronously download and load
 #       or do a timed update

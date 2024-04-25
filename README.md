@@ -31,9 +31,10 @@ frdr
 | Key    | Description
 | ---    | ---
 | enter  | Open post in `$PAGER`
-| ctrl-r | Mark post as read
+| ctrl-r | Refresh all feeds
+| ctrl-y | Mark post as read
 | ctrl-u | Mark post as unread
-| esc    | Reload/Show unread posts
+| esc    | Show unread posts
 | ctrl-h | Show read (hidden) posts
 | ctrl-o | xdg-open URL to post
 
