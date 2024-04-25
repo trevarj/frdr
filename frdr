@@ -58,16 +58,23 @@ aggregate_items() {
 		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
 		read=${1:-0}
 		for json in "$feed_dir"/*.json; do
-			[[ -f $json ]] &&
-				jq -r --arg read "$read" --arg json "$json" \
+			if [[ -f $json ]]; then
+				out=()
+				readarray -t out < <(jq -rc --arg read "$read" --arg json "$json" \
 					'select((.read | tostring) == $read) |
-          (.timestamp) + "," + 
-          ($json) + "," + 
-          (.link) + "," + 
-          "[" + (.pub_date) + "]" +
-          "[" + (.channel_alias) + "] " +
-          (.title)' \
-					"$json"
+          (.timestamp) + "\n" + 
+          ($json) + "\n" + 
+          (.link) + "\n" + 
+          (.pub_date) + "\n" +
+          (.channel_alias) + "\n" +
+          (.title) + "\n"' \
+					"$json")
+				# shellcheck disable=SC2059
+				[[ -v out[@] ]] &&
+					printf "${FRDR_POST_FMT:-%s,%s,%s,%s  %-14s │ %s\n}" \
+						"${out[0]}" "${out[1]}" "${out[2]}" \
+						"${out[3]}" "${out[4]}" "${out[5]}"
+			fi
 		done
 	done |
 		sort -r -k1
@@ -112,14 +119,14 @@ aggregate_items |
 		--info=inline-right \
 		--delimiter="," \
 		--with-nth=4.. \
-		--preview="bash -c 'load_config; jq -r '.content' {2} | \${PREVIEWER:-less}'" \
+		--preview="bash -c 'load_config; jq -r '.content' {2} | \${FRDR_PREVIEWER:-less}'" \
 		--bind="${FRDR_REFRESH:-ctrl-r}:reload-sync(bash -c 'download_feeds; aggregate_items')" \
 		--bind="${FRDR_SELECT_ALL:-ctrl-space}:toggle-all" \
 		--bind="${FRDR_MARK:-ctrl-y}:reload(bash -c 'mark 1 {+2}; aggregate_items')" \
 		--bind="${FRDR_UNMARK:-ctrl-u}:reload(bash -c 'mark 0 {+2}; aggregate_items_read')" \
 		--bind="${FRDR_VIEW_UNREAD:-esc}:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
 		--bind="${FRDR_VIEW_READ:-alt-h}:reload(bash -c 'aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
-		--bind="enter:execute(bash -c 'jq -r '.content' {2} | \${PAGER:-less}')+reload(bash -c 'mark 1 {2}; aggregate_items')" \
+		--bind="enter:execute(bash -c 'load_config; jq -r '.content' {2} | \${FRDR_PAGER:-less}')+reload(bash -c 'mark 1 {2}; aggregate_items')" \
 		--bind="${FRDR_OPEN:-ctrl-o}:execute(xdg-open {3})+reload(bash -c 'mark 1 {2}; aggregate_items')"
 
 # TODO: Color formatting / Customizable post formatting
