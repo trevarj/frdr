@@ -30,10 +30,10 @@ download_feeds() {
 			jq -c --arg alias "$alias" '. as $c | $c.items // $c.entries | .[] | 
 	   {
        title: (.title.value? // .title),
-       timestamp: ((try(.pub_date | strptime("%a, %d %b %Y %T %z") | mktime) // (.updated | fromdate)) | tostring),
-       pub_date: ((try(.pub_date | strptime("%a, %d %b %Y %T %z")) // (.updated | fromdate)) | strftime("%d %b %y %k:%M")),
+       timestamp: ((try(.pub_date | strptime("%a, %d %b %Y %T %Z") | mktime) // (.updated | fromdate)) | tostring),
+       pub_date: ((try(.pub_date | strptime("%a, %d %b %Y %T %Z")) // (.updated | fromdate)) | strftime("%d %b %y %k:%M")),
        link: (.link // .id),
-       guid: (.guid // .id),
+       guid: (.guid // .id // .link),
        content: ((.description // .content.value?) // .content),
 	     channel_alias: $alias,
        channel: ($c.title.value? // $c.title),
