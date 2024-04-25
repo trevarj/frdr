@@ -71,7 +71,7 @@ aggregate_items() {
 					"$json")
 				# shellcheck disable=SC2059
 				[[ -v out[@] ]] &&
-					printf "${FRDR_POST_FMT:-%s,%s,%s,%s  %-14s │ %s\n}" \
+					printf "%s,%s,%s,${FRDR_POST_FMT:-%s  %-14s │ %s}\n" \
 						"${out[0]}" "${out[1]}" "${out[2]}" \
 						"${out[3]}" "${out[4]}" "${out[5]}"
 			fi
@@ -113,6 +113,7 @@ download_feeds &
 aggregate_items |
 	fzf --layout=reverse \
 		--multi \
+		--ansi \
 		--header="Feed Reader - Welcome!" \
 		--header-first \
 		--prompt="Search: " \
