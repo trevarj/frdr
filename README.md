@@ -2,6 +2,8 @@
 
 A terminal RSS reader which utilizes popular *nix tools
 
+[![asciicast](https://asciinema.org/a/656386.svg)](https://asciinema.org/a/656386)
+
 ## Requirements
 - [fzf](https://github.com/junegunn/fzf) - Fuzzy-finder and previewer (UI)
 - [jq](https://github.com/jqlang/jq) - JSON parsing
