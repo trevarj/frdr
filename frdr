@@ -9,7 +9,7 @@
 ## RSS Feed Reader feat. fzf & jq
 
 CONFIG_DIR=~/.config/frdr
-FRDR_CONFIG_FILE=$CONFIG_DIR/config.env
+FRDR_CONFIG_FILE=$CONFIG_DIR/config.bash
 FRDR_CACHE_DIR=~/.cache/frdr
 
 download_feeds() {
@@ -99,11 +99,7 @@ load_config() {
 [[ $1 == "-s" ]] && return # for sourcing
 
 [[ ! -f $FRDR_CONFIG_FILE ]] &&
-  (
-    echo "creating config file $FRDR_CONFIG_FILE"
-    mkdir -p $CONFIG_DIR
-    printf "FEEDS=(\n# \"ALIAS <FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$FRDR_CONFIG_FILE
-  )
+  echo "Please create $FRDR_CONFIG_FILE by copying the sample.config.bash"
 
 load_config
 download_feeds &
