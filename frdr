@@ -85,6 +85,8 @@ export -f aggregate_items_read
 
 # $1: 1 for read, 0 for unread
 # rest: files
+# FIXME: return a code on success/failure to determine if aggregate_items needs
+# to be called after marking
 mark() {
   sed -ie "s/\"read\": $(($1 ^ 1))/\"read\": $1/" "${@:2}"
 }
