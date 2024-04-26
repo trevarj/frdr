@@ -10,8 +10,10 @@ A terminal RSS reader which utilizes popular *nix tools
 - [rss2json](https://github.com/trevarj/rss2json) - Converts RSS XML to JSON
 
 ## Config
-A bash env file placed in `~/.config/frdr/config.env` which contains a bash
+A bash env file placed in `~/.config/frdr/config.bash` which contains a bash
 array of RSS feeds.
+
+Please see [the sample config](./sample.config.bash) for a full example.
 
 ```sh
 FEEDS=(
@@ -29,7 +31,7 @@ Simply run:
 frdr
 ```
 
-### Controls
+### Default Controls
 | Key    | Description
 | ---    | ---
 | enter  | Open post in `$PAGER`
