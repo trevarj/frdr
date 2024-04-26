@@ -96,7 +96,7 @@ load_config() {
 
 #########################
 
-[[ $1 == "-c" ]] && return # for sourcing functions
+[[ $1 == "-s" ]] && return # for sourcing
 
 [[ ! -f $FRDR_CONFIG_FILE ]] &&
   (
