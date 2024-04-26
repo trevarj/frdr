@@ -93,8 +93,9 @@ mark() {
 export -f mark
 
 load_config() {
+  declare -gA FEEDS=()
   # shellcheck disable=SC1090
-  source $FRDR_CONFIG_FILE
+  source "$FRDR_CONFIG_FILE"
 }
 export -f load_config
 
