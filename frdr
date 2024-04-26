@@ -99,6 +99,8 @@ aggregate_items_read() {
 # rest: files
 # FIXME: return a code on success/failure to determine if aggregate_items needs
 # to be called after marking
+# TODO: move to `perl -i -pe '...' <FILE>` for portability?
+# https://unix.stackexchange.com/questions/92895/how-can-i-achieve-portability-with-sed-i-in-place-editing
 mark() {
   sed -ie "s/\"read\": $(($1 ^ 1))/\"read\": $1/" "${@:2}"
 }
