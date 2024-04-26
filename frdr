@@ -31,7 +31,6 @@ download_feeds() {
 	   {
        title: (.title.value? // .title),
        timestamp: ((try(.pub_date | strptime("%a, %d %b %Y %T %Z") | mktime) // (.updated | fromdate)) | tostring),
-       pub_date: ((try(.pub_date | strptime("%a, %d %b %Y %T %Z")) // (.updated | fromdate)) | strftime("%d %b %y %k:%M")),
        link: (.link // .id),
        guid: (.guid // .id // .link),
        content: ((.description // .content.value?) // .content),
@@ -64,15 +63,14 @@ aggregate_items() {
           (.timestamp) + "\n" +
           ($json) + "\n" +
           (.link) + "\n" +
-          (.pub_date) + "\n" +
           (.channel_alias) + "\n" +
           (.title) + "\n"' \
           "$json")
         # shellcheck disable=SC2059
         [[ -v out[@] ]] &&
-          printf "%s,%s,%s,${FRDR_POST_FMT:-%s  %-14s │ %s}\n" \
+          printf "%s,%s,%s,${FRDR_POST_FMT:-%(%d %b %y %k:%M)T %-14s │ %s}\n" \
             "${out[0]}" "${out[1]}" "${out[2]}" \
-            "${out[3]}" "${out[4]}" "${out[5]}"
+            "${out[0]}" "${out[3]}" "${out[4]}"
       fi
     done
   done |
