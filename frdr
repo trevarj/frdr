@@ -13,21 +13,21 @@ export FRDR_CONFIG_FILE=~/.config/frdr/config.env
 export FRDR_CACHE_DIR=~/.cache/frdr
 
 download_feeds() {
-	load_config
-	mkdir -p $FRDR_CACHE_DIR
-	for feed in "${FEEDS[@]}"; do
-		read -r alias url <<<"$feed"
-		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
-		[[ ! -d $feed_dir ]] && mkdir "$feed_dir"
+  load_config
+  mkdir -p $FRDR_CACHE_DIR
+  for alias in "${!FEEDS[@]}"; do
+    url=${FEEDS[$alias]}
+    feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
+    [[ ! -d $feed_dir ]] && mkdir "$feed_dir"
 
-		# check if it's a local file
-		if [[ -f $url ]]; then
-			cat "$url"
-		else # fetch feed
-			wget -q -O- "$url"
-		fi |
-			rss2json |
-			jq -c --arg alias "$alias" '. as $c | $c.items // $c.entries | .[] | 
+    # check if it's a local file
+    if [[ -f $url ]]; then
+      cat "$url"
+    else # fetch feed
+      wget -q -O- "$url"
+    fi |
+      rss2json |
+      jq -c --arg alias "$alias" '. as $c | $c.items // $c.entries | .[] |
 	   {
        title: (.title.value? // .title),
        timestamp: ((try(.pub_date | strptime("%a, %d %b %Y %T %Z") | mktime) // (.updated | fromdate)) | tostring),
@@ -41,95 +41,94 @@ download_feeds() {
 	     channel_desc: $c.description,
 	     read: 0
 	   }' |
-			while read -r obj; do
-				hash=$(jq '.guid' <<<"$obj" | cksum)
-				file="$feed_dir/${hash%% *}.json"
-				[[ ! -f $file ]] && jq <<<"$obj" >"$file"
-			done
-	done
+      while read -r obj; do
+        hash=$(jq '.guid' <<<"$obj" | cksum)
+        file="$feed_dir/${hash%% *}.json"
+        [[ ! -f $file ]] && jq <<<"$obj" >"$file"
+      done
+  done
 }
 export -f download_feeds
 
 aggregate_items() {
-	load_config
-	for feed in "${FEEDS[@]}"; do
-		read -r alias url <<<"$feed"
-		feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
-		read=${1:-0}
-		for json in "$feed_dir"/*.json; do
-			if [[ -f $json ]]; then
-				out=()
-				readarray -t out < <(jq -rc --arg read "$read" --arg json "$json" \
-					'select((.read | tostring) == $read) |
-          (.timestamp) + "\n" + 
-          ($json) + "\n" + 
-          (.link) + "\n" + 
+  load_config
+  for alias in "${!FEEDS[@]}"; do
+    url=${FEEDS[$alias]}
+    feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
+    read=${1:-0}
+    for json in "$feed_dir"/*.json; do
+      if [[ -f $json ]]; then
+        out=()
+        readarray -t out < <(jq -rc --arg read "$read" --arg json "$json" \
+          'select((.read | tostring) == $read) |
+          (.timestamp) + "\n" +
+          ($json) + "\n" +
+          (.link) + "\n" +
           (.pub_date) + "\n" +
           (.channel_alias) + "\n" +
           (.title) + "\n"' \
-					"$json")
-				# shellcheck disable=SC2059
-				[[ -v out[@] ]] &&
-					printf "%s,%s,%s,${FRDR_POST_FMT:-%s  %-14s │ %s}\n" \
-						"${out[0]}" "${out[1]}" "${out[2]}" \
-						"${out[3]}" "${out[4]}" "${out[5]}"
-			fi
-		done
-	done |
-		sort -r -k1
+          "$json")
+        # shellcheck disable=SC2059
+        [[ -v out[@] ]] &&
+          printf "%s,%s,%s,${FRDR_POST_FMT:-%s  %-14s │ %s}\n" \
+            "${out[0]}" "${out[1]}" "${out[2]}" \
+            "${out[3]}" "${out[4]}" "${out[5]}"
+      fi
+    done
+  done |
+    sort -r -k1
 }
 export -f aggregate_items
 
 aggregate_items_read() {
-	aggregate_items 1
+  aggregate_items 1
 }
 export -f aggregate_items_read
 
 # $1: 1 for read, 0 for unread
 # $@: files
 mark() {
-	sed -ie "s/\"read\": $(($1 ^ 1))/\"read\": $1/" "$@"
+  sed -ie "s/\"read\": $(($1 ^ 1))/\"read\": $1/" "${@:2}"
 }
 export -f mark
 
 load_config() {
-	# shellcheck disable=SC1090
-	source $FRDR_CONFIG_FILE
+  # shellcheck disable=SC1090
+  source $FRDR_CONFIG_FILE
 }
 export -f load_config
 
 #########################
 
 [[ ! -f $FRDR_CONFIG_FILE ]] &&
-	(
-		echo "creating config file $FRDR_CONFIG_FILE"
-		mkdir -p $CONFIG_DIR
-		printf "FEEDS=(\n# \"ALIAS <FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$FRDR_CONFIG_FILE
-	)
+  (
+    echo "creating config file $FRDR_CONFIG_FILE"
+    mkdir -p $CONFIG_DIR
+    printf "FEEDS=(\n# \"ALIAS <FEED URL>\"\n\"trev https://trevarj.github.io/rss.xml\"\n)" >$FRDR_CONFIG_FILE
+  )
 
 load_config
 download_feeds &
 aggregate_items |
-	fzf --layout=reverse \
-		--multi \
-		--ansi \
-		--header="Feed Reader - Welcome!" \
-		--header-first \
-		--prompt="Search: " \
-		--info=inline-right \
-		--delimiter="," \
-		--with-nth=4.. \
-		--preview="bash -c 'load_config; jq -r '.content' {2} | \${FRDR_PREVIEWER:-less}'" \
-		--bind="${FRDR_REFRESH:-ctrl-r}:reload-sync(bash -c 'download_feeds; aggregate_items')" \
-		--bind="${FRDR_SELECT_ALL:-ctrl-space}:toggle-all" \
-		--bind="${FRDR_MARK:-ctrl-y}:reload(bash -c 'mark 1 {+2}; aggregate_items')" \
-		--bind="${FRDR_UNMARK:-ctrl-u}:reload(bash -c 'mark 0 {+2}; aggregate_items_read')" \
-		--bind="${FRDR_VIEW_UNREAD:-esc}:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
-		--bind="${FRDR_VIEW_READ:-alt-h}:reload(bash -c 'aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
-		--bind="enter:execute(bash -c 'load_config; jq -r '.content' {2} | \${FRDR_PAGER:-less}')+reload(bash -c 'mark 1 {2}; aggregate_items')" \
-		--bind="${FRDR_OPEN:-ctrl-o}:execute(xdg-open {3})+reload(bash -c 'mark 1 {2}; aggregate_items')"
+  fzf --layout=reverse \
+    --multi \
+    --ansi \
+    --header="Feed Reader - Welcome!" \
+    --header-first \
+    --prompt="Search: " \
+    --info=inline-right \
+    --delimiter="," \
+    --with-nth=4.. \
+    --preview="bash -c 'load_config; jq -r '.content' {2} | \${FRDR_PREVIEWER:-less}'" \
+    --bind="${FRDR_REFRESH:-ctrl-r}:reload-sync(bash -c 'download_feeds; aggregate_items')" \
+    --bind="${FRDR_SELECT_ALL:-ctrl-space}:toggle-all" \
+    --bind="${FRDR_MARK:-ctrl-y}:reload(bash -c 'mark 1 {+2}; aggregate_items')" \
+    --bind="${FRDR_UNMARK:-ctrl-u}:reload(bash -c 'mark 0 {+2}; aggregate_items_read')" \
+    --bind="${FRDR_VIEW_UNREAD:-esc}:reload(bash -c 'aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
+    --bind="${FRDR_VIEW_READ:-alt-h}:reload(bash -c 'aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
+    --bind="enter:execute(bash -c 'load_config; jq -r '.content' {2} | \${FRDR_PAGER:-less}')+reload(bash -c 'mark 1 {2}; aggregate_items')" \
+    --bind="${FRDR_OPEN:-ctrl-o}:execute(xdg-open {3})+reload(bash -c 'mark 1 {2}; aggregate_items')"
 
-# TODO: Color formatting / Customizable post formatting
 # TODO: More robust config, ex. allow spaces in alias
 # FIXME: show read posts, hit ctrl-r on one => sends you back to unread posts
 #        with wrong header
