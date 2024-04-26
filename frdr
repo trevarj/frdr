@@ -11,6 +11,20 @@
 CONFIG_DIR=~/.config/frdr
 FRDR_CONFIG_FILE=$CONFIG_DIR/config.bash
 FRDR_CACHE_DIR=~/.cache/frdr
+FRDR_REFRESH=ctrl-r
+FRDR_MARK=ctrl-y
+FRDR_UNMARK=ctrl-u
+FRDR_VIEW_UNREAD=esc
+FRDR_VIEW_READ=alt-h
+FRDR_OPEN=ctrl-o
+FRDR_SELECT_ALL=ctrl-space
+FRDR_SHOW_HELP=true
+
+load_config() {
+  declare -gA FEEDS=()
+  # shellcheck disable=SC1090
+  source "$FRDR_CONFIG_FILE"
+}
 
 download_feeds() {
   load_config
@@ -50,6 +64,7 @@ download_feeds() {
 
 aggregate_items() {
   load_config
+  help_header
   for alias in "${!FEEDS[@]}"; do
     url=${FEEDS[$alias]}
     feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
@@ -88,10 +103,14 @@ mark() {
   sed -ie "s/\"read\": $(($1 ^ 1))/\"read\": $1/" "${@:2}"
 }
 
-load_config() {
-  declare -gA FEEDS=()
-  # shellcheck disable=SC1090
-  source "$FRDR_CONFIG_FILE"
+help_header() {
+  [[ "$FRDR_SHOW_HELP" ]] &&
+    printf ",,,%s: refresh, %s/%s: mark read/unread, %s/%s: view unread/read\n" \
+      "$FRDR_REFRESH" \
+      "$FRDR_MARK" \
+      "$FRDR_UNMARK" \
+      "$FRDR_VIEW_UNREAD" \
+      "$FRDR_VIEW_READ"
 }
 
 #########################
@@ -109,19 +128,20 @@ aggregate_items |
     --ansi \
     --header="Feed Reader - Welcome!" \
     --header-first \
+    --header-lines=1 \
     --prompt="Search: " \
     --info=inline-right \
     --delimiter="," \
     --with-nth=4.. \
-    --preview="jq -r '.content' {2} | ${FRDR_PREVIEWER:-less}" \
-    --bind="${FRDR_REFRESH:-ctrl-r}:reload-sync(bash -c '. frdr -s; download_feeds; aggregate_items')" \
-    --bind="${FRDR_SELECT_ALL:-ctrl-space}:toggle-all" \
-    --bind="${FRDR_MARK:-ctrl-y}:reload(bash -c \". frdr -s; mark 1 {+2}; aggregate_items\")" \
-    --bind="${FRDR_UNMARK:-ctrl-u}:reload(bash -c \". frdr -s; mark 0 {+2}; aggregate_items_read\")" \
-    --bind="${FRDR_VIEW_UNREAD:-esc}:reload(bash -c '. frdr -s; aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
-    --bind="${FRDR_VIEW_READ:-alt-h}:reload(bash -c '. frdr -s; aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
-    --bind="enter:execute(jq -r '.content' {2} | ${FRDR_PAGER:-less})+reload(bash -c \". frdr -s; mark 1 {2}; aggregate_items\")" \
-    --bind="${FRDR_OPEN:-ctrl-o}:execute(xdg-open {3})+reload(bash -c \". frdr -s; mark 1 {2}; aggregate_items\")"
+    --preview="jq -r '.content' {2} | ${FRDR_PREVIEWER:=less}" \
+    --bind="$FRDR_REFRESH:reload-sync(bash -c '. frdr -s; download_feeds; aggregate_items')" \
+    --bind="$FRDR_SELECT_ALL:toggle-all" \
+    --bind="$FRDR_MARK:reload(bash -c \". frdr -s; mark 1 {+2}; aggregate_items\")" \
+    --bind="$FRDR_UNMARK:reload(bash -c \". frdr -s; mark 0 {+2}; aggregate_items_read\")" \
+    --bind="$FRDR_VIEW_UNREAD:reload(bash -c '. frdr -s; aggregate_items')+transform-header(printf 'Feed Reader - Unread')" \
+    --bind="$FRDR_VIEW_READ:reload(bash -c '. frdr -s; aggregate_items_read')+transform-header(printf 'Feed Reader - Read')" \
+    --bind="enter:execute(jq -r '.content' {2} | ${FRDR_PAGER:=less})+reload(bash -c \". frdr -s; mark 1 {2}; aggregate_items\")" \
+    --bind="$FRDR_OPEN:execute(xdg-open {3})+reload(bash -c \". frdr -s; mark 1 {2}; aggregate_items\")"
 
 # FIXME: show read posts, hit ctrl-r on one => sends you back to unread posts
 #        with wrong header

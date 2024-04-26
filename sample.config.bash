@@ -4,10 +4,12 @@ FEEDS=(
 )
 FRDR_REFRESH=ctrl-r
 FRDR_MARK=ctrl-y
-FRDR_UNMARK=ctrl
+FRDR_UNMARK=ctrl-u
 FRDR_VIEW_UNREAD=esc
 FRDR_VIEW_READ=alt-h
 FRDR_OPEN=ctrl-o
+FRDR_SELECT_ALL=ctrl-space
+FRDR_SHOW_HELP=true
 
 # You can format the post list using the following printf string.
 # It can even work with ansi colors by setting some variables as follows:
