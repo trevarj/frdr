@@ -9,7 +9,7 @@
 ## RSS Feed Reader feat. fzf & jq
 
 CONFIG_DIR=~/.config/frdr
-export FRDR_CONFIG_FILE=~/.config/frdr/config.env
+export FRDR_CONFIG_FILE=$CONFIG_DIR/config.env
 export FRDR_CACHE_DIR=~/.cache/frdr
 
 download_feeds() {
