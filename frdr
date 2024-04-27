@@ -19,6 +19,7 @@ FRDR_VIEW_READ=alt-h
 FRDR_OPEN=ctrl-o
 FRDR_SELECT_ALL=ctrl-space
 FRDR_SHOW_HELP=true
+FRDR_PORT=2122
 
 load_config() {
   declare -gA FEEDS=()
@@ -58,7 +59,7 @@ download_feeds() {
         hash=$(jq '.guid' <<<"$obj" | cksum)
         filename=${hash%% *}.json
         [[ ! -f $feed_dir/read/$filename ]] && jq <<<"$obj" >"$feed_dir/unread/$filename"
-      done &
+      done && curl -XPOST localhost:"$FRDR_PORT" -d "reload(bash -c '. frdr -s; aggregate_items')" &
   done
 }
 
@@ -125,11 +126,11 @@ help_header() {
   echo "Please create $FRDR_CONFIG_FILE by copying the sample.config.bash" && exit 1
 
 load_config
-download_feeds
 aggregate_items |
   fzf --layout=reverse \
     --multi \
     --ansi \
+    --listen "$FRDR_PORT" \
     --header="Feed Reader - Welcome!" \
     --header-first \
     --header-lines=1 \
@@ -138,7 +139,7 @@ aggregate_items |
     --delimiter="," \
     --with-nth=4.. \
     --preview="jq -r '.content' {2} | ${FRDR_PREVIEWER:=less}" \
-    --bind="start:unbind($FRDR_UNMARK)" \
+    --bind="start:unbind($FRDR_UNMARK)+execute(bash -c '. frdr -s; download_feeds')" \
     --bind="$FRDR_REFRESH:reload-sync(bash -c '. frdr -s; download_feeds; aggregate_items')" \
     --bind="$FRDR_SELECT_ALL:toggle-all" \
     --bind="$FRDR_MARK:reload(bash -c '. frdr -s; mark read {+2}; aggregate_items')" \
@@ -147,6 +148,3 @@ aggregate_items |
     --bind="$FRDR_VIEW_READ:unbind($FRDR_MARK,$FRDR_VIEW_READ)+reload(bash -c '. frdr -s; aggregate_items_read')+transform-header(printf 'Feed Reader - Read')+rebind($FRDR_UNMARK,$FRDR_VIEW_UNREAD)" \
     --bind="enter:execute(jq -r '.content' {2} | ${FRDR_PAGER:=less})+reload(bash -c '. frdr -s; mark read {2}; aggregate_items')" \
     --bind="$FRDR_OPEN:execute(xdg-open {3})+reload(bash -c '. frdr -s; mark read {2}; aggregate_items')"
-
-# FIXME: Initial query should sleep download_feeds and then reload the list
-# after a few seconds?
