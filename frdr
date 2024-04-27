@@ -122,7 +122,7 @@ help_header() {
 [[ $1 == "-s" ]] && return # for sourcing
 
 [[ ! -f $FRDR_CONFIG_FILE ]] &&
-  echo "Please create $FRDR_CONFIG_FILE by copying the sample.config.bash"
+  echo "Please create $FRDR_CONFIG_FILE by copying the sample.config.bash" && exit 1
 
 load_config
 download_feeds &
