@@ -64,11 +64,11 @@ download_feeds() {
 
 aggregate_items() {
   load_config
-  help_header
+  state=${1:-unread} # read/unread
+  help_header "$state"
   for alias in "${!FEEDS[@]}"; do
     url=${FEEDS[$alias]}
     feed_dir="$FRDR_CACHE_DIR/${alias// /_}"
-    state=${1:-unread} # read/unread
     for json in "$feed_dir/$state"/*.json; do
       if [[ -f $json ]]; then
         out=()
@@ -105,12 +105,16 @@ mark() {
 
 help_header() {
   [[ "$FRDR_SHOW_HELP" ]] &&
-    printf ",,,%s: refresh, %s/%s: mark read/unread, %s/%s: view unread/read\n" \
-      "$FRDR_REFRESH" \
+    printf ",,,%s: refresh, enter: read, %s: open link, " "$FRDR_REFRESH" "$FRDR_OPEN"
+  if [[ "$1" == "unread" ]]; then
+    printf "%s: mark read, %s: view read\n" \
       "$FRDR_MARK" \
-      "$FRDR_UNMARK" \
-      "$FRDR_VIEW_UNREAD" \
       "$FRDR_VIEW_READ"
+  elif [[ "$1" == "read" ]]; then
+    printf "%s: mark unread, %s: view unread\n" \
+      "$FRDR_UNMARK" \
+      "$FRDR_VIEW_UNREAD"
+  fi
 }
 
 #########################
