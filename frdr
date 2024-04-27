@@ -141,12 +141,12 @@ aggregate_items |
     --bind="start:unbind($FRDR_UNMARK)" \
     --bind="$FRDR_REFRESH:reload-sync(bash -c '. frdr -s; download_feeds; aggregate_items')" \
     --bind="$FRDR_SELECT_ALL:toggle-all" \
-    --bind="$FRDR_MARK:reload(bash -c \". frdr -s; mark read {+2}; aggregate_items\")" \
-    --bind="$FRDR_UNMARK:reload(bash -c \". frdr -s; mark unread {+2}; aggregate_items_read\")" \
+    --bind="$FRDR_MARK:reload(bash -c '. frdr -s; mark read {+2}; aggregate_items')" \
+    --bind="$FRDR_UNMARK:reload(bash -c '. frdr -s; mark unread {+2}; aggregate_items_read')" \
     --bind="$FRDR_VIEW_UNREAD:unbind($FRDR_UNMARK)+reload(bash -c '. frdr -s; aggregate_items')+transform-header(printf 'Feed Reader - Unread')+rebind($FRDR_MARK,$FRDR_VIEW_READ)" \
     --bind="$FRDR_VIEW_READ:unbind($FRDR_MARK,$FRDR_VIEW_READ)+reload(bash -c '. frdr -s; aggregate_items_read')+transform-header(printf 'Feed Reader - Read')+rebind($FRDR_UNMARK,$FRDR_VIEW_UNREAD)" \
-    --bind="enter:execute(jq -r '.content' {2} | ${FRDR_PAGER:=less})+reload(bash -c \". frdr -s; mark read {2}; aggregate_items\")" \
-    --bind="$FRDR_OPEN:execute(xdg-open {3})+reload(bash -c \". frdr -s; mark read {2}; aggregate_items\")"
+    --bind="enter:execute(jq -r '.content' {2} | ${FRDR_PAGER:=less})+reload(bash -c '. frdr -s; mark read {2}; aggregate_items')" \
+    --bind="$FRDR_OPEN:execute(xdg-open {3})+reload(bash -c '. frdr -s; mark read {2}; aggregate_items')"
 
 # FIXME: Initial query should sleep download_feeds and then reload the list
 # after a few seconds?
