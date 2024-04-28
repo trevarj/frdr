@@ -21,7 +21,8 @@ FEEDS=(
 	"trev https://trevarj.github.io/rss.xml"
 	# "trev_local /tmp/rss.xml"
 )
-PAGER=bat # customize the pager for the preview pane
+FRDR_PAGER="lynx -stdin"           # Pager that is used when pressing 'enter' on a post
+FRDR_PREVIEWER="lynx -dump -stdin" # Pager used in the preview pane when hovering a post
 ```
 
 ## Usage
@@ -32,6 +33,9 @@ frdr
 ```
 
 ### Default Controls
+
+All controls except enter are able to be overridden.
+
 | Key    | Description
 | ---    | ---
 | enter  | Open post in `$PAGER`
