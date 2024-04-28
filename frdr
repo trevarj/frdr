@@ -67,7 +67,7 @@ download_feeds() {
 }
 
 send_update_command() {
-  curl -XPOST localhost:"$FRDR_PORT" -d "$BIND_STATE_UNREAD"
+  curl -XPOST localhost:"$FRDR_PORT" -d "$BIND_STATE_UNREAD" >/dev/null 2>&1
 }
 
 aggregate_items() {
